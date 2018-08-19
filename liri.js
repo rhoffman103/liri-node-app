@@ -6,6 +6,9 @@ var keys = require("./keys.js");
 var Spotify = require("node-spotify-api");
 var request = require("request");
 var moment = require("moment");
+var fs = require("fs");
+var inquirer = require("inquirer");
+
 //  Access keys info
 var spotify = new Spotify(keys.spotify);
 
@@ -16,13 +19,12 @@ var userSearch = process.argv
     .join(" ")
       .toLowerCase();
 
-if (command.length > 0) {
-  command = command.toLowerCase();
+if (command && command.length > 0)  {
+    command = command.toLowerCase();
 }
 
-const spotifyThis = function() {
-  var songTitle = userSearch;
-  if (userSearch.length == 0) {
+const spotifyThis = function(songTitle) {
+  if (songTitle.length == 0) {
     songTitle = "the sign";
   }
 
@@ -43,12 +45,11 @@ const spotifyThis = function() {
   });
 };
 
-const movieThis = function() {
-  var movieName = userSearch.replace(/\s/g, '+').replace(/\./g, '');
-  
+const movieThis = function(movieName) {
+  movieName = movieName.replace(/\s/g, '+').replace(/\./g, '');
   console.log(`\nYou searched ${userSearch}`);
   
-  if (userSearch.length == 0) {
+  if (movieName.length == 0) {
     movieName = "mr+nobody";
   }
 
@@ -71,8 +72,9 @@ const movieThis = function() {
   });
 };
 
-const concertThis = function() {
-  var artist = userSearch.replace(/\s/g, '+')
+// Search for artist and display upcoming concerts
+const concertThis = function(artist) {
+  var artist = artist.replace(/\s/g, '+')
     .replace(/\./g, '')
       .replace(/\//g, '%252F')
         .replace(/\?/g, '%253F')
@@ -81,7 +83,7 @@ const concertThis = function() {
 
   console.log(`\nYou searched ${userSearch}`);
 
-  if (userSearch.length == 0) {
+  if (artist.length == 0) {
     artist = "august burns red";
   }
 
@@ -90,8 +92,6 @@ const concertThis = function() {
   request(queryUrl, function(error, response, body) {
     // If the request is successful
     if (!error && response.statusCode === 200) {
-      // Parse the body of the site and recover just the imdbRating
-      // console.log(JSON.parse(body));
 
       JSON.parse(body).forEach(function(element) {
         console.log(`\nVenue: ${element.venue.name}`);
@@ -102,16 +102,67 @@ const concertThis = function() {
   });
 }
 
-switch (command) {
-  case "spotify-this-song":
-    spotifyThis();
-    break;
+// Read a .txt and search the data in spotify
+const doWhatItSays = function() {
+  fs.readFile("random.txt", "utf8", function(err, data) {
+    if (err) {
+      return console.log(err);
+    }
+    data = data.split(",");
+    spotifyThis(data[1].replace(/\"/g, ''));
+  })
+};
 
-  case "movie-this":
-    movieThis();
-    break;
-    
-  case "concert-this":
-    concertThis();
-    break;
+const commandLogic = function(com, search) {
+  switch (com) {
+    case "spotify-this-song":
+      spotifyThis(search);
+      break;
+
+    case "movie-this":
+      movieThis(search);
+      break;
+      
+    case "concert-this":
+      concertThis(search);
+      break;
+
+      case "do-what-it-says":
+        doWhatItSays();
+        break;
+  }
+}
+
+// Need to edit for "do-what-it-says" choice
+const prompt = function () {
+    return inquirer.prompt([
+      {
+        type: "list",
+        name: "command",
+        message: "What is your command?",
+        choices: ["spotify-this-song", "movie-this", "concert-this", "do-what-it-says"]
+      },
+      {
+        type: "input",
+        name: "search",
+        message: "Enter your search..."
+      }
+    ]).then(function(user) {
+      if (user.command != "do-what-it-says") {
+        commandLogic(user.command, user.search);
+      }
+      else {
+        doWhatItSays();
+      }
+    })
+  }
+  
+if (!command) {
+  prompt();
+}
+// var returnValue = promt();
+// returnValue.then();
+
+if (command) {
+  commandLogic(command, userSearch);
 }
