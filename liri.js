@@ -1,6 +1,8 @@
 //  read and set any environment variables with the dotenv package
 require("dotenv").config();
 
+var promptPath = false;
+
 //  Need code to import keys.js and store it in a variable
 var keys = require("./keys.js");
 var Spotify = require("node-spotify-api");
@@ -42,6 +44,7 @@ const spotifyThis = function(songTitle) {
         data.tracks.items[0].album.artists[0].external_urls.spotify
       }`
     );
+    checkPromptPath();
   });
 };
 
@@ -69,6 +72,7 @@ const movieThis = function(movieName) {
       console.log("Cast: " + JSON.parse(body).Actors);
       console.log("Plot: " + JSON.parse(body).Plot);
     }
+    checkPromptPath();
   });
 };
 
@@ -99,6 +103,7 @@ const concertThis = function(artist) {
         console.log(`Date: ${moment(element.datetime, "YYYY-MM-DD").format("L")}`);  //  2018-08-25T17:00:00
       })
     }
+    checkPromptPath();
   });
 }
 
@@ -110,8 +115,15 @@ const doWhatItSays = function() {
     }
     data = data.split(",");
     spotifyThis(data[1].replace(/\"/g, ''));
-  })
+  });
 };
+
+const checkPromptPath = function() {
+  if (promptPath) {
+    console.log();
+    prompt();
+  }
+}
 
 const commandLogic = function(com, search) {
   switch (com) {
@@ -140,24 +152,43 @@ const prompt = function () {
         type: "list",
         name: "command",
         message: "What is your command?",
-        choices: ["spotify-this-song", "movie-this", "concert-this", "do-what-it-says"]
+        choices: ["spotify-this-song", "movie-this", "concert-this", "do-what-it-says", "exit"]
       },
       {
         type: "input",
         name: "search",
-        message: "Enter your search..."
+        message: "Enter your search...",
+        when: function(answers) {
+          if ((answers.command === "do-what-it-says") || (answers.command === "exit")) {
+            return false;
+          }
+          else {
+            return true;
+          }
+          // return (answers.command !== "do-what-it-says") || (answers.command === "exit");
+        },
       }
     ]).then(function(user) {
-      if (user.command != "do-what-it-says") {
-        commandLogic(user.command, user.search);
+      userSearch = user.search;
+
+      if (user.command == "exit") {
+        console.log("\nGoodbye");
+      }
+      else if (user.command == "do-what-it-says") {
+        console.log("\nDoing what it said");
+        promptPath = true;
+        doWhatItSays();
       }
       else {
-        doWhatItSays();
+        commandLogic(user.command, user.search);
+        promptPath = true;
+        // console.log(user.command + " " + user.search);
       }
     })
   }
   
 if (!command) {
+  console.log();
   prompt();
 }
 // var returnValue = promt();
